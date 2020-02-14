@@ -1,5 +1,7 @@
 # Mixed Precision Path Tracking for Polynomial Homotopy Continuation
 
+[![DOI](https://zenodo.org/badge/240472911.svg)](https://zenodo.org/badge/latestdoi/240472911)
+
 This repository contains the reference implementation accompanying the article
 [arXiv:1902.02968](https://arxiv.org/abs/1902.02968) as well as the
 scripts and data to perform the experiments.
