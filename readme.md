@@ -4,9 +4,9 @@ This repository contains the reference implementation accompanying the article
 [arXiv:1902.02968](https://arxiv.org/abs/1902.02968) as well as the
 scripts and data to perform the experiments.
 
-This project requires Julia 1.3. In the terminal switch to this folder
-and execute
-```sh
+This project requires Julia 1.3. In the terminal switch to this folder,
+start Julia and execute
+```julia
 using Pkg
 Pkg.activate(joinpath(@__DIR__, ".."))
 Pkg.instantiate()
