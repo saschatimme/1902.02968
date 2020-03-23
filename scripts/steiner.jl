@@ -1,5 +1,5 @@
 using Pkg;
-Pkg.activate(joinpath(@__DIR__))
+Pkg.activate(joinpath(@__DIR__, ".."))
 
 if !(@isdefined PathTracking)
     include(joinpath(@__DIR__, "../implementation/PathTracking.jl"))
@@ -19,16 +19,20 @@ function steiner_system()
     y = [Variable(Symbol(:y, i, j)) for i = 1:2, j = 1:5]
     v = [Variable(Symbol(:v, i, j)) for i = 1:6, j = 1:5]
 
-   #tangential conics
-    f = a[1] * x[1]^2 + a[2] * x[1] * x[2] + a[3] * x[2]^2 + a[4] * x[1] +
-        a[5] * x[2] + 1
+    #tangential conics
+    f = a[1] * x[1]^2 + a[2] * x[1] * x[2] + a[3] * x[2]^2 + a[4] * x[1] + a[5] * x[2] + 1
     ∇ = differentiate(f, x)
-   #5 conics
-    g = c[1] * x[1]^2 + c[2] * x[1] * x[2] + c[3] * x[2]^2 + c[4] * x[1] +
-        c[5] * x[2] + c[6]
+    #5 conics
+    g =
+        c[1] * x[1]^2 +
+        c[2] * x[1] * x[2] +
+        c[3] * x[2]^2 +
+        c[4] * x[1] +
+        c[5] * x[2] +
+        c[6]
     ∇_2 = differentiate(g, x)
-   #the general system
-   #f_a_0 is tangent to g_b₀ at x₀
+    #the general system
+    #f_a_0 is tangent to g_b₀ at x₀
     function Incidence(f, a₀, g, b₀, x₀)
         fᵢ = f(x => x₀, a => a₀)
         ∇ᵢ = [∇ᵢ(x => x₀, a => a₀) for ∇ᵢ in ∇]
@@ -63,6 +67,7 @@ function run_hc_steiner()
         S = read_solution_file(data_dir * "solutions_$i", 15)
         p = read_parameters_file(data_dir * "start_parameters_$i")
         for j = 1:N_J
+            i ≤
             q = read_parameters_file(data_dir * "target_parameters_$(i)_$(j)")
 
             tracker = Tracker(ParameterHomotopy(F, p, q))
@@ -82,13 +87,18 @@ function run_hc_steiner()
     return df
 end
 
-function run_bertini_steiner(; MPTYPE::Int = throw(UndefKeywordError(:MPTYPE)))
+function run_bertini_steiner(;
+    MPTYPE::Int = throw(UndefKeywordError(:MPTYPE)),
+    track_tol = nothing,
+)
     df = DataFrame(t = Float64[], count = Int[], duplicates = Int[])
     F = steiner_system()
     if MPTYPE == 0
         result_name = "bertini_dp"
-    elseif MPTYPE == 2
+    elseif MPTYPE == 2 && isnothing(track_tol)
         result_name = "bertini_ap"
+    elseif MPTYPE == 2
+        result_name = "bertini_ap_track_tol_8"
     end
 
     # create only one directory
@@ -99,14 +109,27 @@ function run_bertini_steiner(; MPTYPE::Int = throw(UndefKeywordError(:MPTYPE)))
         p = read_parameters_file(data_dir * "start_parameters_$i")
         for j = 1:N_J
             q = read_parameters_file(data_dir * "target_parameters_$(i)_$(j)")
-            res = bertini(
-                F,
-                S,
-                start_parameters = p,
-                final_parameters = q,
-                MPTYPE = MPTYPE,
-                file_path = file_path,
-            )
+            if !isnothing(track_tol)
+                res = bertini(
+                    F,
+                    S,
+                    start_parameters = p,
+                    final_parameters = q,
+                    MPTYPE = MPTYPE,
+                    file_path = file_path,
+                    TRACKTOLBEFOREEG = track_tol,
+                    TRACKTOLDURINGEG = track_tol,
+                )
+            else
+                res = bertini(
+                    F,
+                    S,
+                    start_parameters = p,
+                    final_parameters = q,
+                    MPTYPE = MPTYPE,
+                    file_path = file_path
+                )
+            end
             t = res[:runtime]
             c = length(res[:finite_solutions])
             dups = 0
@@ -125,38 +148,45 @@ if RUN_EXPERIMENTS
     run_hc_steiner()
     run_bertini_steiner(MPTYPE = 0)
     run_bertini_steiner(MPTYPE = 2)
+    run_bertini_steiner(MPTYPE = 2, track_tol = 1e-8)
 end
 
 hc_df = CSV.read(result_dir * "hc")
 bertini_dp_df = CSV.read(result_dir * "bertini_dp")
 bertini_ap_df = CSV.read(result_dir * "bertini_ap")
+bertini_ap_track_tol_df = CSV.read(result_dir * "bertini_ap_track_tol")
 
 function table_data(df)
-    reshape([
-     @sprintf("%.2f", mean(df.t)),
-     @sprintf("%.2f", median(df.t)),
-     @sprintf("%.2f", minimum(df.t)),
-     @sprintf("%.2f", maximum(df.t)),
-     "",
-     @sprintf("%.1f", mean(df.count)),
-     @sprintf("%.0f", median(df.count)),
-     @sprintf("%.0f", minimum(df.count)),
-     @sprintf("%.0f", maximum(df.count)),
-    ], 1, 9)
+    reshape(
+        [
+            @sprintf("%.2f", mean(df.t)),
+            @sprintf("%.2f", median(df.t)),
+            @sprintf("%.2f", minimum(df.t)),
+            @sprintf("%.2f", maximum(df.t)),
+            "",
+            @sprintf("%.1f", mean(df.count)),
+            @sprintf("%.0f", median(df.count)),
+            @sprintf("%.0f", minimum(df.count)),
+            @sprintf("%.0f", maximum(df.count)),
+        ],
+        1,
+        9,
+    )
 end
 
 
 header = [
-"" "t" "t" "t" "t" "" "count" "count" "count" "count"
-"" "mean" "median" "min" "max" "" "mean" "median" "min" "max"
+    "" "t" "t" "t" "t" "" "count" "count" "count" "count"
+    "" "mean" "median" "min" "max" "" "mean" "median" "min" "max"
 ]
 
 hc = table_data(hc_df)
 bertini_dp = table_data(bertini_dp_df)
 bertini_ap = table_data(bertini_ap_df)
-cat = ["\\texttt{HC.jl}", "\\texttt{Bertini DP}", "\\texttt{Bertini AP}"]
+bertini_ap_track_tol  = table_data(bertini_ap_track_tol_df)
+cat = ["\\texttt{HC.jl}", "\\texttt{Bertini DP}", "\\texttt{Bertini AP}", "\\texttt{Bertini AP (tol)}"]
 
-data = [cat [hc; bertini_dp; bertini_ap]]
+data = [cat [hc; bertini_dp; bertini_ap, bertini_ap_track_tol]]
 
 
 open(result_dir * "table.tex", "w") do io
