@@ -67,7 +67,6 @@ function run_hc_steiner()
         S = read_solution_file(data_dir * "solutions_$i", 15)
         p = read_parameters_file(data_dir * "start_parameters_$i")
         for j = 1:N_J
-            i ≤
             q = read_parameters_file(data_dir * "target_parameters_$(i)_$(j)")
 
             tracker = Tracker(ParameterHomotopy(F, p, q))

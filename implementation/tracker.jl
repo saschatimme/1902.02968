@@ -122,6 +122,8 @@ mutable struct TrackerState{M<:AbstractMatrix{ComplexF64}}
     accepted_steps::Int
     rejected_steps::Int
     last_step_failed::Bool
+    nΔs₁::Int
+    nΔs₂::Int
 end
 
 function TrackerState(
@@ -153,6 +155,7 @@ function TrackerState(
 
     accepted_steps = rejected_steps = 0
     last_step_failed = true
+    nΔs₁ = nΔs₂ = 0
 
     TrackerState(
         x,
@@ -175,6 +178,8 @@ function TrackerState(
         accepted_steps,
         rejected_steps,
         last_step_failed,
+        nΔs₁,
+        nΔs₂
     )
 end
 
@@ -206,6 +211,8 @@ struct TrackerResult{V<:AbstractVector}
     accepted_steps::Int
     rejected_steps::Int
     high_precision_used::Bool
+    nΔs₁::Int
+    nΔs₂::Int
 end
 
 function TrackerResult(state::TrackerState)
@@ -219,6 +226,8 @@ function TrackerResult(state::TrackerState)
         state.accepted_steps,
         state.rejected_steps,
         state.used_high_prec,
+        state.nΔs₁,
+        state.nΔs₂
     )
 end
 
@@ -340,6 +349,8 @@ function update_stepsize!(
         e = state.norm(local_error(predictor))
         Δs₁ = nthroot((√(1 + 2 * _h(a)) - 1) / (ω * e), p)
         Δs₂ = options.β_τ * trust_region(predictor)
+        state.nΔs₁ += Δs₁ < Δs₂
+        state.nΔs₂ += Δs₂ ≤ Δs₁
         s′ = min(state.s + min(Δs₁, Δs₂), DoubleF64(length(state.segment)))
         if state.last_step_failed
             state.s′ = min(state.s + Δs, s′)
@@ -406,6 +417,7 @@ function init!(
     state.condition = TrackerCondition.tracking
     state.accepted_steps = state.rejected_steps = 0
     state.last_step_failed = true
+    state.nΔs₁ = state.nΔs₂ = 0
 
     # compute ω and limit accuracy μ for the start value
     t = state.segment[state.s]
